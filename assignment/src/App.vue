@@ -15,7 +15,7 @@
           {{
             `Bot id #${bot.id}, ${
               bot.processingOrderId
-                ? `process order id #${bot.processingOrderId}`
+                ? `processing order id #${bot.processingOrderId}`
                 : "idle"
             }`
           }}
