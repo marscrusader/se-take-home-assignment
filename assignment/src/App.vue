@@ -2,10 +2,10 @@
   <main>
     <div class="container">
       <div class="buttons-area area">
-        <button class="btn item" @click="createNormalOrder">
+        <button class="btn item" @click="newNormalOrder">
           New Normal Order
         </button>
-        <button class="btn item" @click="createVIPOrder">New VIP Order</button>
+        <button class="btn item" @click="newVIPOrder">New VIP Order</button>
         <button class="btn item" @click="addBot">+ Bot</button>
         <button class="btn item" @click="removeBot">- Bot</button>
       </div>
@@ -29,7 +29,7 @@
           class="item pending order"
         >
           {{
-            order.type === "VIP"
+            order.type === vipType
               ? `VIP order id #${order.id}`
               : `NORMAL order id #${order.id}`
           }}
@@ -43,7 +43,7 @@
           class="order processing item"
         >
           {{
-            order.type === "VIP"
+            order.type === vipType
               ? `Processing VIP order id #${order.id}`
               : `Processing NORMAL order id #${order.id}`
           }}, {{ order.processingTime }}s
@@ -57,7 +57,7 @@
           class="order completed item"
         >
           {{
-            order.type === "VIP"
+            order.type === vipType
               ? `VIP order id #${order.id}`
               : `NORMAL order id #${order.id}`
           }}
@@ -76,20 +76,34 @@ export default {
       completeOrders: [],
       bots: [],
       currentBotId: 1,
+      normalType: "NORMAL",
+      vipType: "VIP",
     };
   },
   methods: {
-    createNormalOrder() {
-      const order = { id: this.generateOrderId(), type: "Normal" };
+    newNormalOrder() {
+      const order = {
+        id: this.generateOrderId(),
+        type: this.normalType,
+        botId: null,
+        processingTime: 0,
+        processingTimeId: null,
+      };
       this.pendingOrders.push(order);
       this.processOrder();
     },
-    createVIPOrder() {
-      const order = { id: this.generateOrderId(), type: "VIP" };
+    newVIPOrder() {
+      const order = {
+        id: this.generateOrderId(),
+        type: this.vipType,
+        botId: null,
+        processingTime: 0,
+        processingTimeId: null,
+      };
 
       // Insert the VIP order before the first normal order
       let insertIndex = this.pendingOrders.findIndex(
-        (order) => order.type === "Normal"
+        (order) => order.type === this.normalType
       );
 
       // If there is no normal order, insert the VIP order at the end
@@ -100,6 +114,7 @@ export default {
       this.processOrder();
     },
     generateOrderId() {
+      // Generate order id by getting total number of orders and add 1, so it always increase
       return (
         this.pendingOrders.length +
         this.processingOrders.length +
@@ -121,7 +136,6 @@ export default {
 
           // Move the order from pending to processing
           this.processingOrders.push(order);
-          order.processingTime = 0;
 
           // Start processing the order
           // Increase the processing time by 1 second using setInterval
