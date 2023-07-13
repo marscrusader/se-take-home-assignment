@@ -26,11 +26,7 @@
         <div
           v-for="order in pendingOrders"
           :key="order.id"
-          :class="{
-            item: true,
-            pending: true,
-            order: true,
-          }"
+          class="item pending order"
         >
           {{
             order.type === "VIP"
@@ -50,7 +46,7 @@
             order.type === "VIP"
               ? `Processing VIP order id #${order.id}`
               : `Processing NORMAL order id #${order.id}`
-          }}
+          }}, {{ order.processingTime }}s
         </div>
       </div>
       <div class="complete-area area">
@@ -90,9 +86,13 @@ export default {
     },
     createVIPOrder() {
       const order = { id: this.generateOrderId(), type: "VIP" };
+
+      // Insert the VIP order before the first normal order
       let insertIndex = this.pendingOrders.findIndex(
         (order) => order.type === "Normal"
       );
+
+      // If there is no normal order, insert the VIP order at the end
       if (insertIndex === -1) {
         insertIndex = this.pendingOrders.length;
       }
@@ -108,35 +108,41 @@ export default {
       );
     },
     processOrder() {
-      for (const bot of this.bots) {
-        if (!bot.processingOrderId && this.pendingOrders.length > 0) {
-          const order = this.pendingOrders[0];
+      if (this.pendingOrders.length) {
+        // Find a bot that is not processing any order
+        const bot = this.bots.find((bot) => !bot.processingOrderId);
+        if (bot) {
+          // Get the first order in pending orders
+          const order = this.pendingOrders.shift();
+
+          // Assign the order to the bot
           order.botId = bot.id;
           bot.processingOrderId = order.id;
+
+          // Move the order from pending to processing
           this.processingOrders.push(order);
-          this.pendingOrders.shift();
-          setTimeout(() => {
-            if (
-              this.processingOrders.find(
+          order.processingTime = 0;
+
+          // Start processing the order
+          // Increase the processing time by 1 second using setInterval
+          order.processingTimeId = setInterval(() => {
+            order.processingTime++;
+
+            // If the processing time is 10 seconds, stop the setInterval
+            // and move the order from processing to complete
+            if (order.processingTime >= 10) {
+              clearInterval(order.processingTimeId);
+              const orderIndex = this.processingOrders.findIndex(
                 (processingOrder) => processingOrder.id === order.id
-              )
-            ) {
-              this.processingOrders = this.processingOrders.filter(
-                (processingOrder) => processingOrder.id !== order.id
               );
+              this.processingOrders.splice(orderIndex, 1);
               this.completeOrders.push(order);
               bot.processingOrderId = null;
-            }
 
-            const botProcessingOrder = this.bots.find(
-              (bot) => bot.processingOrderId === order.id
-            );
-            if (botProcessingOrder) {
-              botProcessingOrder.processingOrderId = null;
+              // Process the next order since we have a free bot
+              this.processOrder();
             }
-
-            this.processOrder();
-          }, 10000);
+          }, 1000);
         }
       }
     },
@@ -150,21 +156,27 @@ export default {
     },
     removeBot() {
       if (this.bots.length > 0) {
-        const bot = this.bots[this.bots.length - 1];
+        const bot = this.bots.pop();
+
+        // If the bot is processing an order, stop the processing
         if (bot.processingOrderId) {
-          const order = this.processingOrders.find(
+          const orderIndex = this.processingOrders.findIndex(
             (order) => order.id === bot.processingOrderId
           );
-          if (order) {
-            this.pendingOrders.unshift(order);
-            this.processingOrders = this.processingOrders.filter(
-              (order) => order.id !== bot.processingOrderId
-            );
+          if (orderIndex !== -1) {
+            const order = this.processingOrders[orderIndex];
+
+            // Reset the processing time
+            clearInterval(order.processingTimeId);
+            order.processingTime = 0;
             order.botId = null;
+
+            // Move the order from processing to pending
+            this.pendingOrders.unshift(order);
+            this.processingOrders.splice(orderIndex, 1);
             bot.processingOrderId = null;
           }
         }
-        this.bots.pop();
       }
     },
   },
